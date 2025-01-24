@@ -7,14 +7,22 @@ import {
   routerArrays,
   storageLocal
 } from "../utils";
+import type { HttpResponse } from "@/utils/http/types.d";
 import {
-  type UserResult,
-  type RefreshTokenResult,
+  type UserData,
+  type RefreshTokenData,
   getLogin,
   refreshTokenApi
 } from "@/api/user";
 import { useMultiTagsStoreHook } from "./multiTags";
 import { type DataInfo, setToken, removeToken, userKey } from "@/utils/auth";
+
+// interface LoginData {
+//   username: string;
+//   password: string;
+//   captcha_id: string; // 添加验证码ID
+//   captcha_code: string; // 添加验证码答案
+// }
 
 export const useUserStore = defineStore("pure-user", {
   state: (): userType => ({
@@ -77,10 +85,10 @@ export const useUserStore = defineStore("pure-user", {
     },
     /** 登入 */
     async loginByUsername(data) {
-      return new Promise<UserResult>((resolve, reject) => {
+      return new Promise<HttpResponse<UserData>>((resolve, reject) => {
         getLogin(data)
           .then(data => {
-            if (data?.success) setToken(data.data);
+            if (data?.code === 200) setToken(data.data);
             resolve(data);
           })
           .catch(error => {
@@ -100,7 +108,7 @@ export const useUserStore = defineStore("pure-user", {
     },
     /** 刷新`token` */
     async handRefreshToken(data) {
-      return new Promise<RefreshTokenResult>((resolve, reject) => {
+      return new Promise<HttpResponse<RefreshTokenData>>((resolve, reject) => {
         refreshTokenApi(data)
           .then(data => {
             if (data) {

@@ -7,7 +7,6 @@ import {
   getKeyList,
   filterTree,
   constantMenus,
-  filterNoPermissionTree,
   formatFlatteningRoutes
 } from "../utils";
 import { useMultiTagsStoreHook } from "./multiTags";
@@ -26,12 +25,66 @@ export const usePermissionStore = defineStore("pure-permission", {
   actions: {
     /** 组装整体路由生成的菜单 */
     handleWholeMenus(routes: any[]) {
-      this.wholeMenus = filterNoPermissionTree(
-        filterTree(ascending(this.constantMenus.concat(routes)))
-      );
-      this.flatteningRoutes = formatFlatteningRoutes(
-        this.constantMenus.concat(routes) as any
-      );
+      // 处理组件路径
+      const processRoutes = routes.map(route => {
+        if (route.component) {
+          // 处理布局组件
+          if (route.component === "Layout") {
+            route.component = "Layout";
+          } else {
+            // 处理页面组件的路径
+            route.component = route.component.startsWith("/")
+              ? route.component.slice(1)
+              : route.component;
+          }
+        }
+
+        if (route.children) {
+          route.children = this.processRoutes(route.children);
+        }
+        console.log(route);
+        // 处理菜单元数据
+        if (route.type === 1) {
+          route.meta = {
+            title: route.title || route.name,
+            icon: route.icon
+          };
+        }
+
+        return route;
+      });
+
+      this.wholeMenus = filterTree(ascending(processRoutes));
+      this.flatteningRoutes = formatFlatteningRoutes(processRoutes);
+    },
+    // 处理路由数组的辅助方法
+    processRoutes(routes: any[]) {
+      return routes.map(route => {
+        if (route.component) {
+          if (route.component === "Layout") {
+            route.component = "Layout";
+          } else {
+            route.component = route.component.startsWith("/")
+              ? route.component.slice(1)
+              : route.component;
+          }
+        }
+
+        if (route.children) {
+          route.children = this.processRoutes(route.children);
+        }
+
+        if (route.meta || route.type === 1) {
+          route.meta = {
+            ...(route.meta || {}),
+            title: route.meta?.title || route.name,
+            icon: route.meta?.icon || route.icon,
+            type: route.type
+          };
+        }
+
+        return route;
+      });
     },
     cacheOperate({ mode, name }: cacheType) {
       const delIndex = this.cachePageList.findIndex(v => v === name);
@@ -41,6 +94,7 @@ export const usePermissionStore = defineStore("pure-permission", {
           break;
         case "add":
           this.cachePageList.push(name);
+          this.cachePageList = [...new Set(this.cachePageList)];
           break;
         case "delete":
           delIndex !== -1 && this.cachePageList.splice(delIndex, 1);

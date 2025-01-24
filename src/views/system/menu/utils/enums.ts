@@ -1,108 +1,93 @@
-import type { OptionsType } from "@/components/ReSegmented";
+import { MenuTypeEnum } from "./types";
 
-const menuTypeOptions: Array<OptionsType> = [
+/** 菜单类型选项 */
+export const menuTypeOptions = [
   {
-    label: "菜单",
-    value: 0
+    value: MenuTypeEnum.MENU,
+    label: "菜单"
   },
   {
-    label: "iframe",
-    value: 1
+    value: MenuTypeEnum.IFRAME,
+    label: "iframe"
   },
   {
-    label: "外链",
-    value: 2
+    value: MenuTypeEnum.LINK,
+    label: "外链"
   },
   {
-    label: "按钮",
-    value: 3
+    value: MenuTypeEnum.BUTTON,
+    label: "按钮"
   }
 ];
 
-const showLinkOptions: Array<OptionsType> = [
+/** 显示链接选项 */
+export const showLinkOptions = [
   {
-    label: "显示",
-    tip: "会在菜单中显示",
-    value: true
+    value: true,
+    label: "显示"
   },
   {
-    label: "隐藏",
-    tip: "不会在菜单中显示",
-    value: false
+    value: false,
+    label: "隐藏"
   }
 ];
 
-const fixedTagOptions: Array<OptionsType> = [
+/** 固定标签选项 */
+export const fixedTagOptions = [
   {
-    label: "固定",
-    tip: "当前菜单名称固定显示在标签页且不可关闭",
-    value: true
+    value: true,
+    label: "固定"
   },
   {
-    label: "不固定",
-    tip: "当前菜单名称不固定显示在标签页且可关闭",
-    value: false
+    value: false,
+    label: "不固定"
   }
 ];
 
-const keepAliveOptions: Array<OptionsType> = [
+/** 缓存选项 */
+export const keepAliveOptions = [
   {
-    label: "缓存",
-    tip: "会保存该页面的整体状态，刷新后会清空状态",
-    value: true
+    value: true,
+    label: "缓存"
   },
   {
-    label: "不缓存",
-    tip: "不会保存该页面的整体状态",
-    value: false
+    value: false,
+    label: "不缓存"
   }
 ];
 
-const hiddenTagOptions: Array<OptionsType> = [
+/** 隐藏标签选项 */
+export const hiddenTagOptions = [
   {
-    label: "允许",
-    tip: "当前菜单名称或自定义信息允许添加到标签页",
-    value: false
+    value: false,
+    label: "显示"
   },
   {
-    label: "禁止",
-    tip: "当前菜单名称或自定义信息禁止添加到标签页",
-    value: true
+    value: true,
+    label: "隐藏"
   }
 ];
 
-const showParentOptions: Array<OptionsType> = [
+/** 显示父级选项 */
+export const showParentOptions = [
   {
-    label: "显示",
-    tip: "会显示父级菜单",
-    value: true
+    value: true,
+    label: "显示"
   },
   {
-    label: "隐藏",
-    tip: "不会显示父级菜单",
-    value: false
+    value: false,
+    label: "隐藏"
   }
 ];
 
-const frameLoadingOptions: Array<OptionsType> = [
+/** iframe加载选项 */
+export const frameLoadingOptions = [
   {
-    label: "开启",
-    tip: "有首次加载动画",
-    value: true
+    value: true,
+    label: "开启"
   },
   {
-    label: "关闭",
-    tip: "无首次加载动画",
-    value: false
+    value: false,
+    label: "关闭"
   }
 ];
-
-export {
-  menuTypeOptions,
-  showLinkOptions,
-  fixedTagOptions,
-  keepAliveOptions,
-  hiddenTagOptions,
-  showParentOptions,
-  frameLoadingOptions
-};

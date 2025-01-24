@@ -1,33 +1,46 @@
 import editForm from "../form.vue";
 import { handleTree } from "@/utils/tree";
 import { message } from "@/utils/message";
-import { getMenuList } from "@/api/system";
 import { transformI18n } from "@/plugins/i18n";
 import { addDialog } from "@/components/ReDialog";
 import { reactive, ref, onMounted, h } from "vue";
 import type { FormItemProps } from "../utils/types";
 import { useRenderIcon } from "@/components/ReIcon/src/hooks";
 import { cloneDeep, isAllEmpty, deviceDetection } from "@pureadmin/utils";
+import { updateMenu, getMenus } from "@/api/menu";
+import type { HttpResponse } from "@/utils/http/types.d";
+import { MenuTypeEnum } from "./types";
 
 export function useMenu() {
   const form = reactive({
-    title: ""
+    title: "",
+    pageNum: 1,
+    pageSize: 10
+  });
+  // 分页数据
+  const pagination = reactive({
+    total: 0,
+    pageNum: 1,
+    pageSize: 10
   });
 
   const formRef = ref();
   const dataList = ref([]);
   const loading = ref(true);
 
-  const getMenuType = (type, text = false) => {
+  const getMenuType = (type: MenuTypeEnum, text = false) => {
+    console.log("type", type);
     switch (type) {
-      case 0:
+      case MenuTypeEnum.MENU:
         return text ? "菜单" : "primary";
-      case 1:
+      case MenuTypeEnum.IFRAME:
         return text ? "iframe" : "warning";
-      case 2:
+      case MenuTypeEnum.LINK:
         return text ? "外链" : "danger";
-      case 3:
+      case MenuTypeEnum.BUTTON:
         return text ? "按钮" : "info";
+      default:
+        return text ? "未知" : "";
     }
   };
 
@@ -106,18 +119,38 @@ export function useMenu() {
 
   async function onSearch() {
     loading.value = true;
-    const { data } = await getMenuList(); // 这里是返回一维数组结构，前端自行处理成树结构，返回格式要求：唯一id加父节点parentId，parentId取父节点id
-    let newData = data;
-    if (!isAllEmpty(form.title)) {
-      // 前端搜索菜单名称
-      newData = newData.filter(item =>
-        transformI18n(item.title).includes(form.title)
-      );
-    }
-    dataList.value = handleTree(newData); // 处理成树结构
-    setTimeout(() => {
+    const params = {
+      title: form.title,
+      pageNum: pagination.pageNum,
+      pageSize: pagination.pageSize
+    };
+
+    try {
+      const res = await getMenus(params);
+      if (res.code === 200 && res.data) {
+        // 更新分页总数
+        pagination.total = res.data.total;
+        // 处理返回的列表数据
+        const list = res.data.list || [];
+        // 转换成树形结构
+        dataList.value = handleTree(list);
+      }
+    } catch (error) {
+      console.error("获取菜单列表失败:", error);
+    } finally {
       loading.value = false;
-    }, 500);
+    }
+  }
+
+  // 处理分页变化
+  function handleSizeChange(val: number) {
+    pagination.pageSize = val;
+    onSearch();
+  }
+
+  function handleCurrentChange(val: number) {
+    pagination.pageNum = val;
+    onSearch();
   }
 
   function formatHigherMenuOptions(treeList) {
@@ -136,7 +169,7 @@ export function useMenu() {
       title: `${title}菜单`,
       props: {
         formInline: {
-          menuType: row?.menuType ?? 0,
+          menuType: row?.menuType ?? MenuTypeEnum.MENU,
           higherMenuOptions: formatHigherMenuOptions(cloneDeep(dataList.value)),
           parentId: row?.parentId ?? 0,
           title: row?.title ?? "",
@@ -188,7 +221,11 @@ export function useMenu() {
               chores();
             } else {
               // 实际开发先调用修改接口，再进行下面操作
-              chores();
+              updateMenu(curData).then((res: HttpResponse<any>) => {
+                if (res.code === 200) {
+                  chores();
+                }
+              });
             }
           }
         });
@@ -212,6 +249,7 @@ export function useMenu() {
     loading,
     columns,
     dataList,
+    pagination,
     /** 搜索 */
     onSearch,
     /** 重置 */
@@ -220,6 +258,8 @@ export function useMenu() {
     openDialog,
     /** 删除菜单 */
     handleDelete,
-    handleSelectionChange
+    handleSelectionChange,
+    handleSizeChange,
+    handleCurrentChange
   };
 }

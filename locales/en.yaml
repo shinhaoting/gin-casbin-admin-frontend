@@ -238,3 +238,5 @@ login:
   purePassWordSureReg: Please enter confirm password
   purePassWordDifferentReg: The two passwords do not match!
   purePassWordUpdateReg: Password has been updated
+  verifyCodeError: Failed to get verification code
+  verifyCodeInvalid: Invalid verification code

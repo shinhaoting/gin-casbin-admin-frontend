@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { onMounted, ref, watch } from "vue";
 import ReCol from "@/components/ReCol";
 import { formRules } from "./utils/rule";
 import { FormProps } from "./utils/types";
@@ -16,10 +16,11 @@ import {
   showParentOptions,
   frameLoadingOptions
 } from "./utils/enums";
+import { MenuTypeEnum } from "./utils/types";
 
 const props = withDefaults(defineProps<FormProps>(), {
   formInline: () => ({
-    menuType: 0,
+    menuType: MenuTypeEnum.MENU,
     higherMenuOptions: [],
     parentId: 0,
     title: "",
@@ -47,7 +48,22 @@ const props = withDefaults(defineProps<FormProps>(), {
 const ruleFormRef = ref();
 const newFormInline = ref(props.formInline);
 
+// 添加监听器，确保数据变化时正确更新
+watch(
+  () => props.formInline,
+  newVal => {
+    newFormInline.value = { ...newVal };
+  },
+  { deep: true }
+);
+
+onMounted(() => {
+  console.log("menuType value:", newFormInline.value.menuType);
+  console.log("menuTypeOptions:", menuTypeOptions);
+});
+
 function getRef() {
+  console.log("ruleFormRef", ruleFormRef.value);
   return ruleFormRef.value;
 }
 
@@ -64,10 +80,15 @@ defineExpose({ getRef });
     <el-row :gutter="30">
       <re-col>
         <el-form-item label="菜单类型">
-          <Segmented
-            v-model="newFormInline.menuType"
-            :options="menuTypeOptions"
-          />
+          <el-radio-group v-model="newFormInline.menuType">
+            <el-radio
+              v-for="option in menuTypeOptions"
+              :key="option.value"
+              :label="option.value"
+            >
+              {{ option.label }}
+            </el-radio>
+          </el-radio-group>
         </el-form-item>
       </re-col>
 
@@ -104,7 +125,12 @@ defineExpose({ getRef });
           />
         </el-form-item>
       </re-col>
-      <re-col v-if="newFormInline.menuType !== 3" :value="12" :xs="24" :sm="24">
+      <re-col
+        v-if="newFormInline.menuType !== MenuTypeEnum.BUTTON"
+        :value="12"
+        :xs="24"
+        :sm="24"
+      >
         <el-form-item label="路由名称" prop="name">
           <el-input
             v-model="newFormInline.name"
@@ -114,7 +140,12 @@ defineExpose({ getRef });
         </el-form-item>
       </re-col>
 
-      <re-col v-if="newFormInline.menuType !== 3" :value="12" :xs="24" :sm="24">
+      <re-col
+        v-if="newFormInline.menuType !== MenuTypeEnum.BUTTON"
+        :value="12"
+        :xs="24"
+        :sm="24"
+      >
         <el-form-item label="路由路径" prop="path">
           <el-input
             v-model="newFormInline.path"
@@ -124,7 +155,7 @@ defineExpose({ getRef });
         </el-form-item>
       </re-col>
       <re-col
-        v-show="newFormInline.menuType === 0"
+        v-show="newFormInline.menuType === MenuTypeEnum.MENU"
         :value="12"
         :xs="24"
         :sm="24"
@@ -150,7 +181,7 @@ defineExpose({ getRef });
         </el-form-item>
       </re-col>
       <re-col
-        v-show="newFormInline.menuType === 0"
+        v-show="newFormInline.menuType === MenuTypeEnum.MENU"
         :value="12"
         :xs="24"
         :sm="24"
@@ -165,7 +196,7 @@ defineExpose({ getRef });
       </re-col>
 
       <re-col
-        v-show="newFormInline.menuType !== 3"
+        v-show="newFormInline.menuType !== MenuTypeEnum.BUTTON"
         :value="12"
         :xs="24"
         :sm="24"
@@ -175,7 +206,7 @@ defineExpose({ getRef });
         </el-form-item>
       </re-col>
       <re-col
-        v-show="newFormInline.menuType !== 3"
+        v-show="newFormInline.menuType !== MenuTypeEnum.BUTTON"
         :value="12"
         :xs="24"
         :sm="24"
@@ -189,7 +220,12 @@ defineExpose({ getRef });
         </el-form-item>
       </re-col>
 
-      <re-col v-show="newFormInline.menuType < 2" :value="12" :xs="24" :sm="24">
+      <re-col
+        v-show="newFormInline.menuType < MenuTypeEnum.LINK"
+        :value="12"
+        :xs="24"
+        :sm="24"
+      >
         <el-form-item label="进场动画">
           <ReAnimateSelector
             v-model="newFormInline.enterTransition"
@@ -197,7 +233,12 @@ defineExpose({ getRef });
           />
         </el-form-item>
       </re-col>
-      <re-col v-show="newFormInline.menuType < 2" :value="12" :xs="24" :sm="24">
+      <re-col
+        v-show="newFormInline.menuType < MenuTypeEnum.LINK"
+        :value="12"
+        :xs="24"
+        :sm="24"
+      >
         <el-form-item label="离场动画">
           <ReAnimateSelector
             v-model="newFormInline.leaveTransition"
@@ -207,7 +248,7 @@ defineExpose({ getRef });
       </re-col>
 
       <re-col
-        v-show="newFormInline.menuType === 0"
+        v-show="newFormInline.menuType === MenuTypeEnum.MENU"
         :value="12"
         :xs="24"
         :sm="24"
@@ -220,7 +261,12 @@ defineExpose({ getRef });
           />
         </el-form-item>
       </re-col>
-      <re-col v-if="newFormInline.menuType === 3" :value="12" :xs="24" :sm="24">
+      <re-col
+        v-if="newFormInline.menuType === MenuTypeEnum.BUTTON"
+        :value="12"
+        :xs="24"
+        :sm="24"
+      >
         <!-- 按钮级别权限设置 -->
         <el-form-item label="权限标识" prop="auths">
           <el-input
@@ -232,7 +278,7 @@ defineExpose({ getRef });
       </re-col>
 
       <re-col
-        v-show="newFormInline.menuType === 1"
+        v-show="newFormInline.menuType === MenuTypeEnum.IFRAME"
         :value="12"
         :xs="24"
         :sm="24"
@@ -246,7 +292,12 @@ defineExpose({ getRef });
           />
         </el-form-item>
       </re-col>
-      <re-col v-if="newFormInline.menuType === 1" :value="12" :xs="24" :sm="24">
+      <re-col
+        v-if="newFormInline.menuType === MenuTypeEnum.IFRAME"
+        :value="12"
+        :xs="24"
+        :sm="24"
+      >
         <el-form-item label="加载动画">
           <Segmented
             :modelValue="newFormInline.frameLoading ? 0 : 1"
@@ -261,7 +312,7 @@ defineExpose({ getRef });
       </re-col>
 
       <re-col
-        v-show="newFormInline.menuType !== 3"
+        v-show="newFormInline.menuType !== MenuTypeEnum.BUTTON"
         :value="12"
         :xs="24"
         :sm="24"
@@ -279,7 +330,7 @@ defineExpose({ getRef });
         </el-form-item>
       </re-col>
       <re-col
-        v-show="newFormInline.menuType !== 3"
+        v-show="newFormInline.menuType !== MenuTypeEnum.BUTTON"
         :value="12"
         :xs="24"
         :sm="24"
@@ -297,7 +348,12 @@ defineExpose({ getRef });
         </el-form-item>
       </re-col>
 
-      <re-col v-show="newFormInline.menuType < 2" :value="12" :xs="24" :sm="24">
+      <re-col
+        v-show="newFormInline.menuType < MenuTypeEnum.LINK"
+        :value="12"
+        :xs="24"
+        :sm="24"
+      >
         <el-form-item label="缓存页面">
           <Segmented
             :modelValue="newFormInline.keepAlive ? 0 : 1"
@@ -311,7 +367,12 @@ defineExpose({ getRef });
         </el-form-item>
       </re-col>
 
-      <re-col v-show="newFormInline.menuType < 2" :value="12" :xs="24" :sm="24">
+      <re-col
+        v-show="newFormInline.menuType < MenuTypeEnum.LINK"
+        :value="12"
+        :xs="24"
+        :sm="24"
+      >
         <el-form-item label="标签页">
           <Segmented
             :modelValue="newFormInline.hiddenTag ? 1 : 0"
@@ -324,7 +385,12 @@ defineExpose({ getRef });
           />
         </el-form-item>
       </re-col>
-      <re-col v-show="newFormInline.menuType < 2" :value="12" :xs="24" :sm="24">
+      <re-col
+        v-show="newFormInline.menuType < MenuTypeEnum.LINK"
+        :value="12"
+        :xs="24"
+        :sm="24"
+      >
         <el-form-item label="固定标签页">
           <Segmented
             :modelValue="newFormInline.fixedTag ? 0 : 1"

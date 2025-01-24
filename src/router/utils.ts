@@ -8,21 +8,14 @@ import {
 import { router } from "./index";
 import { isProxy, toRaw } from "vue";
 import { useTimeoutFn } from "@vueuse/core";
-import {
-  isString,
-  cloneDeep,
-  isAllEmpty,
-  intersection,
-  storageLocal,
-  isIncludeAllChildren
-} from "@pureadmin/utils";
+import { cloneDeep, isAllEmpty, storageLocal } from "@pureadmin/utils";
 import { getConfig } from "@/config";
 import { buildHierarchyTree } from "@/utils/tree";
-import { userKey, type DataInfo } from "@/utils/auth";
 import { type menuType, routerArrays } from "@/layout/types";
 import { useMultiTagsStoreHook } from "@/store/modules/multiTags";
 import { usePermissionStoreHook } from "@/store/modules/permission";
 const IFrame = () => import("@/layout/frame.vue");
+const Layout = () => import("@/layout/index.vue");
 // https://cn.vitejs.dev/guide/features.html#glob-import
 const modulesRoutes = import.meta.glob("/src/views/**/*.{vue,tsx}");
 
@@ -33,9 +26,7 @@ function handRank(routeInfo: any) {
   const { name, path, parentId, meta } = routeInfo;
   return isAllEmpty(parentId)
     ? isAllEmpty(meta?.rank) ||
-      (meta?.rank === 0 && name !== "Home" && path !== "/")
-      ? true
-      : false
+        (meta?.rank === 0 && name !== "Home" && path !== "/")
     : false;
 }
 
@@ -64,34 +55,12 @@ function filterTree(data: RouteComponent[]) {
 }
 
 /** 过滤children长度为0的的目录，当目录下没有菜单时，会过滤此目录，目录没有赋予roles权限，当目录下只要有一个菜单有显示权限，那么此目录就会显示 */
-function filterChildrenTree(data: RouteComponent[]) {
+function filterChildrenTree(data: RouteRecordRaw[]) {
   const newTree = cloneDeep(data).filter((v: any) => v?.children?.length !== 0);
   newTree.forEach(
     (v: { children }) => v.children && (v.children = filterTree(v.children))
   );
   return newTree;
-}
-
-/** 判断两个数组彼此是否存在相同值 */
-function isOneOfArray(a: Array<string>, b: Array<string>) {
-  return Array.isArray(a) && Array.isArray(b)
-    ? intersection(a, b).length > 0
-      ? true
-      : false
-    : true;
-}
-
-/** 从localStorage里取出当前登录用户的角色roles，过滤无权限的菜单 */
-function filterNoPermissionTree(data: RouteComponent[]) {
-  const currentRoles =
-    storageLocal().getItem<DataInfo<number>>(userKey)?.roles ?? [];
-  const newTree = cloneDeep(data).filter((v: any) =>
-    isOneOfArray(v.meta?.roles, currentRoles)
-  );
-  newTree.forEach(
-    (v: any) => v.children && (v.children = filterNoPermissionTree(v.children))
-  );
-  return filterChildrenTree(newTree);
 }
 
 /** 通过指定 `key` 获取父级路径集合，默认 `key` 为 `path` */
@@ -151,12 +120,14 @@ function addPathMatch() {
 
 /** 处理动态路由（后端返回的路由） */
 function handleAsyncRoutes(routeList) {
+  console.log("routeList", routeList);
   if (routeList.length === 0) {
     usePermissionStoreHook().handleWholeMenus(routeList);
   } else {
-    formatFlatteningRoutes(addAsyncRoutes(routeList)).map(
+    const filteredRoutes = filterChildrenTree(routeList);
+    console.log("filteredRoutes", filteredRoutes);
+    formatFlatteningRoutes(addAsyncRoutes(filteredRoutes)).map(
       (v: RouteRecordRaw) => {
-        // 防止重复添加路由
         if (
           router.options.routes[0].children.findIndex(
             value => value.path === v.path
@@ -164,9 +135,7 @@ function handleAsyncRoutes(routeList) {
         ) {
           return;
         } else {
-          // 切记将路由push到routes后还需要使用addRoute，这样路由才能正常跳转
           router.options.routes[0].children.push(v);
-          // 最终路由进行升序
           ascending(router.options.routes[0].children);
           if (!router.hasRoute(v?.name)) router.addRoute(v);
           const flattenRouters: any = router
@@ -203,6 +172,7 @@ function initRouter() {
     } else {
       return new Promise(resolve => {
         getAsyncRoutes().then(({ data }) => {
+          console.log("初始化路由", data);
           handleAsyncRoutes(cloneDeep(data));
           storageLocal().setItem(key, data);
           resolve(router);
@@ -212,6 +182,7 @@ function initRouter() {
   } else {
     return new Promise(resolve => {
       getAsyncRoutes().then(({ data }) => {
+        console.log("初始化路由", data);
         handleAsyncRoutes(cloneDeep(data));
         resolve(router);
       });
@@ -302,28 +273,49 @@ function handleAliveRoute({ name }: ToRouteType, mode?: string) {
 function addAsyncRoutes(arrRoutes: Array<RouteRecordRaw>) {
   if (!arrRoutes || !arrRoutes.length) return;
   const modulesRoutesKeys = Object.keys(modulesRoutes);
+
   arrRoutes.forEach((v: RouteRecordRaw) => {
     // 将backstage属性加入meta，标识此路由为后端返回路由
     v.meta.backstage = true;
-    // 父级的redirect属性取值：如果子级存在且父级的redirect属性不存在，默认取第一个子级的path；如果子级存在且父级的redirect属性存在，取存在的redirect属性，会覆盖默认值
-    if (v?.children && v.children.length && !v.redirect)
-      v.redirect = v.children[0].path;
-    // 父级的name属性取值：如果子级存在且父级的name属性不存在，默认取第一个子级的name；如果子级存在且父级的name属性存在，取存在的name属性，会覆盖默认值（注意：测试中发现父级的name不能和子级name重复，如果重复会造成重定向无效（跳转404），所以这里给父级的name起名的时候后面会自动加上`Parent`，避免重复）
-    if (v?.children && v.children.length && !v.name)
-      v.name = (v.children[0].name as string) + "Parent";
+
+    // 处理组件
     if (v.meta?.frameSrc) {
       v.component = IFrame;
     } else {
-      // 对后端传component组件路径和不传做兼容（如果后端传component组件路径，那么path可以随便写，如果不传，component组件路径会跟path保持一致）
-      const index = v?.component
-        ? modulesRoutesKeys.findIndex(ev => ev.includes(v.component as any))
-        : modulesRoutesKeys.findIndex(ev => ev.includes(v.path));
-      v.component = modulesRoutes[modulesRoutesKeys[index]];
+      // 处理组件路径
+      const componentPath = v.path.startsWith("/") ? v.path.slice(1) : v.path;
+      const matchedComponent = modulesRoutesKeys.find(key => {
+        // 移除 /src/views 和文件扩展名，只比较实际路径
+        const normalizedKey = key
+          .replace("/src/views/", "")
+          .replace(/\.(vue|tsx)$/, "");
+        return normalizedKey === componentPath;
+      });
+
+      if (matchedComponent) {
+        v.component = modulesRoutes[matchedComponent];
+      } else {
+        // 如果没有找到匹配的组件，使用 Layout
+        v.component = Layout;
+      }
     }
+
+    // 处理子路由
     if (v?.children && v.children.length) {
       addAsyncRoutes(v.children);
     }
+
+    // 处理重定向
+    if (v?.children && v.children.length && !v.redirect) {
+      v.redirect = v.children[0].path;
+    }
+
+    // 处理父级路由名称
+    if (v?.children && v.children.length && !v.name) {
+      v.name = (v.children[0].name as string) + "Parent";
+    }
   });
+
   return arrRoutes;
 }
 
@@ -352,39 +344,73 @@ function getHistoryMode(routerHistory): RouterHistory {
 
 /** 获取当前页面按钮级别的权限 */
 function getAuths(): Array<string> {
-  return router.currentRoute.value.meta.auths as Array<string>;
+  return (router.currentRoute.value.meta.auths as Array<string>) || [];
 }
 
-/** 是否有按钮级别的权限（根据路由`meta`中的`auths`字段进行判断）*/
+/** 是否有按钮级别的权限 */
 function hasAuth(value: string | Array<string>): boolean {
   if (!value) return false;
-  /** 从当前路由的`meta`字段里获取按钮级别的所有自定义`code`值 */
   const metaAuths = getAuths();
-  if (!metaAuths) return false;
-  const isAuths = isString(value)
-    ? metaAuths.includes(value)
-    : isIncludeAllChildren(value, metaAuths);
-  return isAuths ? true : false;
+  if (!metaAuths || metaAuths.length === 0) return false;
+
+  if (typeof value === "string") {
+    return metaAuths.includes(value);
+  } else {
+    return value.every(auth => metaAuths.includes(auth));
+  }
 }
 
+/**
+ * 处理顶级菜单的函数
+ * 该函数根据路由的子菜单数量和重定向逻辑来确定返回哪个子路由
+ *
+ * @param route 当前路由对象，可能包含子路由和重定向信息
+ * @returns 返回处理后的路由对象，可能是原始路由或其子路由
+ */
 function handleTopMenu(route) {
-  if (route?.children && route.children.length > 1) {
+  if (!route) return null;
+
+  // 检查路由是否有子路由
+  if (route?.children?.length > 0) {
+    // 如果有重定向，返回重定向的子路由
     if (route.redirect) {
-      return route.children.filter(cur => cur.path === route.redirect)[0];
+      const redirectRoute = route.children.find(
+        cur => cur.path === route.redirect
+      );
+      return redirectRoute || route.children[0];
     } else {
+      // 没有重定向，返回第一个子路由
       return route.children[0];
     }
-  } else {
-    return route;
   }
+
+  // 如果没有子路由，返回原始路由
+  return route;
 }
 
 /** 获取所有菜单中的第一个菜单（顶级菜单）*/
 function getTopMenu(tag = false): menuType {
-  const topMenu = handleTopMenu(
-    usePermissionStoreHook().wholeMenus[0]?.children[0]
-  );
-  tag && useMultiTagsStoreHook().handleTags("push", topMenu);
+  const wholeMenus = usePermissionStoreHook().wholeMenus;
+
+  // 检查菜单是否存在
+  if (!wholeMenus || wholeMenus.length === 0) {
+    return null;
+  }
+
+  // 获取第一个菜单项
+  const firstMenu = wholeMenus[0];
+  if (!firstMenu) {
+    return null;
+  }
+
+  // 处理顶级菜单
+  const topMenu = handleTopMenu(firstMenu);
+
+  // 如果需要，添加到标签页
+  if (tag && topMenu) {
+    useMultiTagsStoreHook().handleTags("push", topMenu);
+  }
+
   return topMenu;
 }
 
@@ -393,16 +419,15 @@ export {
   getAuths,
   ascending,
   filterTree,
+  filterChildrenTree,
   initRouter,
   getTopMenu,
   addPathMatch,
-  isOneOfArray,
   getHistoryMode,
   addAsyncRoutes,
   getParentPaths,
   findRouteByPath,
   handleAliveRoute,
   formatTwoStageRoutes,
-  formatFlatteningRoutes,
-  filterNoPermissionTree
+  formatFlatteningRoutes
 };

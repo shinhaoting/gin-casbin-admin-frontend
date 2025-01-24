@@ -2,7 +2,6 @@ import { reactive } from "vue";
 import { isPhone } from "@pureadmin/utils";
 import type { FormRules } from "element-plus";
 import { $t, transformI18n } from "@/plugins/i18n";
-import { useUserStoreHook } from "@/store/modules/user";
 
 /** 6位数字验证码正则 */
 export const REGEXP_SIX = /^\d{6}$/;
@@ -18,8 +17,6 @@ const loginRules = reactive<FormRules>({
       validator: (rule, value, callback) => {
         if (value === "") {
           callback(new Error(transformI18n($t("login.purePassWordReg"))));
-        } else if (!REGEXP_PWD.test(value)) {
-          callback(new Error(transformI18n($t("login.purePassWordRuleReg"))));
         } else {
           callback();
         }
@@ -32,10 +29,6 @@ const loginRules = reactive<FormRules>({
       validator: (rule, value, callback) => {
         if (value === "") {
           callback(new Error(transformI18n($t("login.pureVerifyCodeReg"))));
-        } else if (useUserStoreHook().verifyCode !== value) {
-          callback(
-            new Error(transformI18n($t("login.pureVerifyCodeCorrectReg")))
-          );
         } else {
           callback();
         }
