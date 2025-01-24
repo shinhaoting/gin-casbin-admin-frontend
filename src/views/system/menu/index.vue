@@ -4,6 +4,7 @@ import { useMenu } from "./utils/hook";
 import { transformI18n } from "@/plugins/i18n";
 import { PureTableBar } from "@/components/RePureTableBar";
 import { useRenderIcon } from "@/components/ReIcon/src/hooks";
+import { MenuTypeEnum } from "./utils/types";
 
 import Delete from "@iconify-icons/ep/delete";
 import EditPen from "@iconify-icons/ep/edit-pen";
@@ -21,11 +22,14 @@ const {
   loading,
   columns,
   dataList,
+  pagination,
   onSearch,
   resetForm,
   openDialog,
   handleDelete,
-  handleSelectionChange
+  handleSelectionChange,
+  handleSizeChange,
+  handleCurrentChange
 } = useMenu();
 
 function onFullscreen() {
@@ -66,7 +70,7 @@ function onFullscreen() {
     </el-form>
 
     <PureTableBar
-      title="菜单管理（仅演示，操作后不生效）"
+      title="菜单管理"
       :columns="columns"
       :isExpandAll="false"
       :tableRef="tableRef?.getTableRef()"
@@ -82,7 +86,7 @@ function onFullscreen() {
           新增菜单
         </el-button>
       </template>
-      <template v-slot="{ size, dynamicColumns }">
+      <template #default="{ size, dynamicColumns }">
         <pure-table
           ref="tableRef"
           adaptive
@@ -113,7 +117,7 @@ function onFullscreen() {
               修改
             </el-button>
             <el-button
-              v-show="row.menuType !== 3"
+              v-show="row.menuType !== MenuTypeEnum.BUTTON"
               class="reset-margin"
               link
               type="primary"
@@ -141,6 +145,19 @@ function onFullscreen() {
             </el-popconfirm>
           </template>
         </pure-table>
+
+        <!-- 分页组件 -->
+        <div class="flex justify-end mt-4">
+          <el-pagination
+            v-model:current-page="pagination.pageNum"
+            v-model:page-size="pagination.pageSize"
+            :page-sizes="[10, 20, 50, 100]"
+            :total="pagination.total"
+            layout="total, sizes, prev, pager, next, jumper"
+            @size-change="handleSizeChange"
+            @current-change="handleCurrentChange"
+          />
+        </div>
       </template>
     </PureTableBar>
   </div>

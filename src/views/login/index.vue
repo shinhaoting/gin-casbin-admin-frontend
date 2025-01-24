@@ -19,8 +19,7 @@ import LoginQrCode from "./components/LoginQrCode.vue";
 import { useUserStoreHook } from "@/store/modules/user";
 import { initRouter, getTopMenu } from "@/router/utils";
 import { bg, avatar, illustration } from "./utils/static";
-import { ReImageVerify } from "@/components/ReImageVerify";
-import { ref, toRaw, reactive, watch, computed } from "vue";
+import { ref, toRaw, reactive, watch, computed, onMounted } from "vue";
 import { useRenderIcon } from "@/components/ReIcon/src/hooks";
 import { useTranslationLang } from "@/layout/hooks/useTranslationLang";
 import { useDataThemeChange } from "@/layout/hooks/useDataThemeChange";
@@ -32,6 +31,7 @@ import Lock from "@iconify-icons/ri/lock-fill";
 import Check from "@iconify-icons/ep/check";
 import User from "@iconify-icons/ri/user-3-fill";
 import Info from "@iconify-icons/ri/information-line";
+import { getVerifyCode } from "@/api/verify";
 
 defineOptions({
   name: "Login"
@@ -58,9 +58,27 @@ const { locale, translationCh, translationEn } = useTranslationLang();
 
 const ruleForm = reactive({
   username: "admin",
-  password: "admin123",
-  verifyCode: ""
+  password: "123456",
+  verifyCode: "",
+  captchaId: ""
 });
+
+const verifyCodeUrl = ref("");
+
+const refreshVerifyCode = async () => {
+  try {
+    const res = await getVerifyCode();
+    if (res.code === 200) {
+      verifyCodeUrl.value = res.data.captcha_image;
+      ruleForm.captchaId = res.data.captcha_id;
+      ruleForm.verifyCode = "";
+    } else {
+      message(res.message || t("login.verifyCodeError"), { type: "error" });
+    }
+  } catch (error) {
+    message(t("login.verifyCodeError"), { type: "error" });
+  }
+};
 
 const onLogin = async (formEl: FormInstance | undefined) => {
   if (!formEl) return;
@@ -70,10 +88,12 @@ const onLogin = async (formEl: FormInstance | undefined) => {
       useUserStoreHook()
         .loginByUsername({
           username: ruleForm.username,
-          password: ruleForm.password
+          password: ruleForm.password,
+          captcha_id: ruleForm.captchaId,
+          captcha_code: ruleForm.verifyCode
         })
         .then(res => {
-          if (res.success) {
+          if (res.code === 200) {
             // 获取后端路由
             return initRouter().then(() => {
               disabled.value = true;
@@ -86,6 +106,7 @@ const onLogin = async (formEl: FormInstance | undefined) => {
             });
           } else {
             message(t("login.pureLoginFail"), { type: "error" });
+            refreshVerifyCode();
           }
         })
         .finally(() => (loading.value = false));
@@ -116,6 +137,10 @@ watch(checked, bool => {
 });
 watch(loginDay, value => {
   useUserStoreHook().SET_LOGINDAY(value);
+});
+
+onMounted(() => {
+  refreshVerifyCode();
 });
 </script>
 
@@ -227,7 +252,9 @@ watch(loginDay, value => {
                   :prefix-icon="useRenderIcon('ri:shield-keyhole-line')"
                 >
                   <template v-slot:append>
-                    <ReImageVerify v-model:code="imgCode" />
+                    <div class="verify-code-img" @click="refreshVerifyCode">
+                      <img :src="verifyCodeUrl" alt="验证码" />
+                    </div>
                   </template>
                 </el-input>
               </el-form-item>
@@ -370,6 +397,16 @@ watch(loginDay, value => {
   .check-en {
     position: absolute;
     left: 20px;
+  }
+}
+
+.verify-code-img {
+  height: 32px;
+  cursor: pointer;
+
+  img {
+    width: 100px;
+    height: 100%;
   }
 }
 </style>
