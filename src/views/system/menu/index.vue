@@ -147,7 +147,7 @@ function onFullscreen() {
         </pure-table>
 
         <!-- 分页组件 -->
-        <div class="flex justify-end mt-4">
+        <!-- <div class="flex justify-end mt-4">
           <el-pagination
             v-model:current-page="pagination.pageNum"
             v-model:page-size="pagination.pageSize"
@@ -157,7 +157,7 @@ function onFullscreen() {
             @size-change="handleSizeChange"
             @current-change="handleCurrentChange"
           />
-        </div>
+        </div> -->
       </template>
     </PureTableBar>
   </div>

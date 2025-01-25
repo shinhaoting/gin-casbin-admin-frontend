@@ -7,10 +7,11 @@ export enum MenuTypeEnum {
 }
 
 export interface FormItemProps {
-  menuType?: MenuTypeEnum;
+  menuType: MenuTypeEnum;
+  title: string;
+  auths: string;
+  parentId: number;
   higherMenuOptions?: Array<any>;
-  parentId?: number;
-  title?: string;
   name?: string;
   path?: string;
   component?: string;
@@ -21,7 +22,6 @@ export interface FormItemProps {
   enterTransition?: string;
   leaveTransition?: string;
   activePath?: string;
-  auths?: string;
   frameSrc?: string;
   frameLoading?: boolean;
   keepAlive?: boolean;

@@ -7,7 +7,7 @@ import { reactive, ref, onMounted, h } from "vue";
 import type { FormItemProps } from "../utils/types";
 import { useRenderIcon } from "@/components/ReIcon/src/hooks";
 import { cloneDeep, isAllEmpty, deviceDetection } from "@pureadmin/utils";
-import { updateMenu, getMenus } from "@/api/menu";
+import { updateMenu, getMenus, addMenu } from "@/api/menu";
 import type { HttpResponse } from "@/utils/http/types.d";
 import { MenuTypeEnum } from "./types";
 
@@ -21,7 +21,7 @@ export function useMenu() {
   const pagination = reactive({
     total: 0,
     pageNum: 1,
-    pageSize: 10
+    pageSize: 9999
   });
 
   const formRef = ref();
@@ -50,14 +50,14 @@ export function useMenu() {
       prop: "title",
       align: "left",
       cellRenderer: ({ row }) => (
-        <>
+        <span>
           <span class="inline-block mr-1">
             {h(useRenderIcon(row.icon), {
               style: { paddingTop: "1px" }
             })}
           </span>
           <span>{transformI18n(row.title)}</span>
-        </>
+        </span>
       )
     },
     {
@@ -201,10 +201,10 @@ export function useMenu() {
       contentRenderer: () => h(editForm, { ref: formRef, formInline: null }),
       beforeSure: (done, { options }) => {
         const FormRef = formRef.value.getRef();
-        const curData = options.props.formInline as FormItemProps;
+        const formData = FormRef.model; // 获取最新的表单数据
         function chores() {
           message(
-            `您${title}了菜单名称为${transformI18n(curData.title)}的这条数据`,
+            `您${title}了菜单名称为${transformI18n(formData.title)}的这条数据`,
             {
               type: "success"
             }
@@ -214,14 +214,25 @@ export function useMenu() {
         }
         FormRef.validate(valid => {
           if (valid) {
-            console.log("curData", curData);
-            // 表单规则校验通过
+            const submitData = {
+              ...options.props.formInline,
+              ...formData,
+              title: formData.title,
+              auths: formData.auths,
+              menuType: formData.menuType,
+              parentId: formData.parentId
+            };
+
+            console.log("提交的数据:", submitData);
+
             if (title === "新增") {
-              // 实际开发先调用新增接口，再进行下面操作
-              chores();
+              addMenu(submitData).then((res: HttpResponse<any>) => {
+                if (res.code === 200) {
+                  chores();
+                }
+              });
             } else {
-              // 实际开发先调用修改接口，再进行下面操作
-              updateMenu(curData).then((res: HttpResponse<any>) => {
+              updateMenu(submitData).then((res: HttpResponse<any>) => {
                 if (res.code === 200) {
                   chores();
                 }

@@ -48,6 +48,8 @@ const props = withDefaults(defineProps<FormProps>(), {
 const ruleFormRef = ref();
 const newFormInline = ref(props.formInline);
 
+const emit = defineEmits(["update:formInline"]);
+
 // 添加监听器，确保数据变化时正确更新
 watch(
   () => props.formInline,
@@ -57,14 +59,26 @@ watch(
   { deep: true }
 );
 
+// 监听表单数据变化
+watch(
+  newFormInline,
+  val => {
+    emit("update:formInline", val);
+  },
+  { deep: true }
+);
+
 onMounted(() => {
   console.log("menuType value:", newFormInline.value.menuType);
   console.log("menuTypeOptions:", menuTypeOptions);
 });
 
+// 修改 getRef 函数
 function getRef() {
-  console.log("ruleFormRef", ruleFormRef.value);
-  return ruleFormRef.value;
+  return {
+    validate: ruleFormRef.value?.validate,
+    model: newFormInline.value // 添加这行，返回最新的表单数据
+  };
 }
 
 defineExpose({ getRef });
@@ -81,13 +95,13 @@ defineExpose({ getRef });
       <re-col>
         <el-form-item label="菜单类型">
           <el-radio-group v-model="newFormInline.menuType">
-            <el-radio
+            <el-radio-button
               v-for="option in menuTypeOptions"
               :key="option.value"
               :label="option.value"
             >
               {{ option.label }}
-            </el-radio>
+            </el-radio-button>
           </el-radio-group>
         </el-form-item>
       </re-col>
