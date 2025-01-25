@@ -6,17 +6,27 @@ import { ElMessageBox } from "element-plus";
 import { usePublicHooks } from "../../hooks";
 import { transformI18n } from "@/plugins/i18n";
 import { addDialog } from "@/components/ReDialog";
-import type { FormItemProps } from "../utils/types";
 import type { PaginationProps } from "@pureadmin/table";
 import { getKeyList, deviceDetection } from "@pureadmin/utils";
-import { getRoleList, getRoleMenu, getRoleMenuIds } from "@/api/system";
-import { type Ref, reactive, ref, onMounted, h, toRaw, watch } from "vue";
+import { getMenus } from "@/api/menu";
+import {
+  getRoles,
+  addRole,
+  updateRole,
+  deleteRole,
+  getRoleMenus,
+  updateRoleMenu,
+  type RoleData
+} from "@/api/role";
+import { type Ref, reactive, ref, onMounted, h, watch } from "vue";
 
 export function useRole(treeRef: Ref) {
   const form = reactive({
     name: "",
     code: "",
-    status: ""
+    status: "",
+    pageNum: 1,
+    pageSize: 10
   });
   const curRow = ref();
   const formRef = ref();
@@ -145,49 +155,52 @@ export function useRole(treeRef: Ref) {
   }
 
   function handleDelete(row) {
-    message(`您删除了角色名称为${row.name}的这条数据`, { type: "success" });
-    onSearch();
-  }
-
-  function handleSizeChange(val: number) {
-    console.log(`${val} items per page`);
-  }
-
-  function handleCurrentChange(val: number) {
-    console.log(`current page: ${val}`);
-  }
-
-  function handleSelectionChange(val) {
-    console.log("handleSelectionChange", val);
+    deleteRole([row.id]).then(() => {
+      message(`您删除了角色名称为${row.name}的这条数据`, { type: "success" });
+      onSearch();
+    });
   }
 
   async function onSearch() {
     loading.value = true;
-    const { data } = await getRoleList(toRaw(form));
-    dataList.value = data.list;
-    pagination.total = data.total;
-    pagination.pageSize = data.pageSize;
-    pagination.currentPage = data.currentPage;
+    const params = {
+      name: form.name,
+      code: form.code,
+      status: form.status,
+      pageNum: pagination.currentPage,
+      pageSize: pagination.pageSize
+    };
 
-    setTimeout(() => {
+    try {
+      const { data } = await getRoles(params);
+      dataList.value = data.list;
+      pagination.total = data.total;
+      pagination.currentPage = data.currentPage;
+    } catch (error) {
+      console.error("获取角色列表失败:", error);
+    } finally {
       loading.value = false;
-    }, 500);
+    }
   }
 
   const resetForm = formEl => {
     if (!formEl) return;
     formEl.resetFields();
+    pagination.currentPage = 1;
+    pagination.pageSize = 10;
     onSearch();
   };
 
-  function openDialog(title = "新增", row?: FormItemProps) {
+  function openDialog(title = "新增", row?: RoleData) {
     addDialog({
       title: `${title}角色`,
       props: {
         formInline: {
+          id: row?.id ?? 0,
           name: row?.name ?? "",
           code: row?.code ?? "",
-          remark: row?.remark ?? ""
+          remark: row?.remark ?? "",
+          status: row?.status ?? ""
         }
       },
       width: "40%",
@@ -198,7 +211,7 @@ export function useRole(treeRef: Ref) {
       contentRenderer: () => h(editForm, { ref: formRef, formInline: null }),
       beforeSure: (done, { options }) => {
         const FormRef = formRef.value.getRef();
-        const curData = options.props.formInline as FormItemProps;
+        const curData = options.props.formInline as RoleData;
         function chores() {
           message(`您${title}了角色名称为${curData.name}的这条数据`, {
             type: "success"
@@ -211,11 +224,13 @@ export function useRole(treeRef: Ref) {
             console.log("curData", curData);
             // 表单规则校验通过
             if (title === "新增") {
-              // 实际开发先调用新增接口，再进行下面操作
-              chores();
+              addRole(curData).then(() => {
+                chores();
+              });
             } else {
-              // 实际开发先调用修改接口，再进行下面操作
-              chores();
+              updateRole(curData).then(() => {
+                chores();
+              });
             }
           }
         });
@@ -223,14 +238,47 @@ export function useRole(treeRef: Ref) {
     });
   }
 
+  // 获取菜单树数据
+  async function loadMenuTree() {
+    try {
+      loading.value = true;
+      const { data } = await getMenus({
+        status: 1,
+        pageNum: 1,
+        pageSize: 1000
+      });
+      // 处理返回的菜单数据为树形结构
+      treeData.value = handleTree(data.list || []);
+      // 获取所有菜单ID，用于全选/展开功能
+      treeIds.value = getKeyList(treeData.value, "id");
+    } catch (error) {
+      console.error("获取菜单列表失败:", error);
+      message("获取菜单列表失败", { type: "error" });
+    } finally {
+      loading.value = false;
+    }
+  }
+
   /** 菜单权限 */
-  async function handleMenu(row?: any) {
-    const { id } = row;
-    if (id) {
+  async function handleMenu(row?: RoleData) {
+    if (row?.id) {
       curRow.value = row;
       isShow.value = true;
-      const { data } = await getRoleMenuIds({ id });
-      treeRef.value.setCheckedKeys(data);
+      try {
+        loading.value = true;
+        // 如果菜单树还没有加载，先加载菜单树
+        if (!treeData.value.length) {
+          await loadMenuTree();
+        }
+        // 获取角色的菜单权限ID列表
+        const { data } = await getRoleMenus(row.id);
+        treeRef.value.setCheckedKeys(data?.map(item => item.id) ?? []);
+      } catch (error) {
+        console.error("获取角色菜单权限失败:", error);
+        message("获取角色菜单权限失败", { type: "error" });
+      } finally {
+        loading.value = false;
+      }
     } else {
       curRow.value = null;
       isShow.value = false;
@@ -250,8 +298,10 @@ export function useRole(treeRef: Ref) {
     const { id, name } = curRow.value;
     // 根据用户 id 调用实际项目中菜单权限修改接口
     console.log(id, treeRef.value.getCheckedKeys());
-    message(`角色名称为${name}的菜单权限修改成功`, {
-      type: "success"
+    updateRoleMenu(id, treeRef.value.getCheckedKeys()).then(() => {
+      message(`角色名称为${name}的菜单权限修改成功`, {
+        type: "success"
+      });
     });
   }
 
@@ -266,11 +316,24 @@ export function useRole(treeRef: Ref) {
     return transformI18n(node.title)!.includes(query);
   };
 
-  onMounted(async () => {
+  function handleSizeChange(val: number) {
+    pagination.pageSize = val;
+    pagination.currentPage = 1;
     onSearch();
-    const { data } = await getRoleMenu();
-    treeIds.value = getKeyList(data, "id");
-    treeData.value = handleTree(data);
+  }
+
+  function handleCurrentChange(val: number) {
+    pagination.currentPage = val;
+    onSearch();
+  }
+
+  function handleSelectionChange(val) {
+    console.log("handleSelectionChange", val);
+  }
+
+  onMounted(async () => {
+    onSearch(); // 获取角色列表
+    await loadMenuTree(); // 获取菜单树数据
   });
 
   watch(isExpandAll, val => {

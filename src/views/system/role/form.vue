@@ -2,12 +2,13 @@
 import { ref } from "vue";
 import { formRules } from "./utils/rule";
 import { FormProps } from "./utils/types";
-
 const props = withDefaults(defineProps<FormProps>(), {
   formInline: () => ({
+    id: 0,
     name: "",
     code: "",
-    remark: ""
+    remark: "",
+    status: 0
   })
 });
 
