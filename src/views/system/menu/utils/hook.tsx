@@ -7,7 +7,7 @@ import { reactive, ref, onMounted, h } from "vue";
 import type { FormItemProps } from "../utils/types";
 import { useRenderIcon } from "@/components/ReIcon/src/hooks";
 import { cloneDeep, isAllEmpty, deviceDetection } from "@pureadmin/utils";
-import { updateMenu, getMenus, addMenu } from "@/api/menu";
+import { updateMenu, getMenus, addMenu, deleteMenu } from "@/api/menu";
 import type { HttpResponse } from "@/utils/http/types.d";
 import { MenuTypeEnum } from "./types";
 
@@ -245,10 +245,12 @@ export function useMenu() {
   }
 
   function handleDelete(row) {
-    message(`您删除了菜单名称为${transformI18n(row.title)}的这条数据`, {
-      type: "success"
+    deleteMenu([row.id]).then(() => {
+      message(`您删除了菜单名称为${transformI18n(row.title)}的这条数据`, {
+        type: "success"
+      });
+      onSearch();
     });
-    onSearch();
   }
 
   onMounted(() => {

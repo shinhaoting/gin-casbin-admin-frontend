@@ -68,10 +68,7 @@ watch(
   { deep: true }
 );
 
-onMounted(() => {
-  console.log("menuType value:", newFormInline.value.menuType);
-  console.log("menuTypeOptions:", menuTypeOptions);
-});
+onMounted(() => {});
 
 // 修改 getRef 函数
 function getRef() {
