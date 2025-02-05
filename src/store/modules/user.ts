@@ -37,8 +37,6 @@ export const useUserStore = defineStore("pure-user", {
     // 按钮级别权限
     permissions:
       storageLocal().getItem<DataInfo<number>>(userKey)?.permissions ?? [],
-    // 前端生成的验证码（按实际需求替换）
-    verifyCode: "",
     // 判断登录页面显示哪个组件（0：登录（默认）、1：手机登录、2：二维码登录、3：注册、4：忘记密码）
     currentPage: 0,
     // 是否勾选了登录页的免登录
@@ -62,14 +60,6 @@ export const useUserStore = defineStore("pure-user", {
     /** 存储角色 */
     SET_ROLES(roles: Array<string>) {
       this.roles = roles;
-    },
-    /** 存储按钮级别权限 */
-    SET_PERMS(permissions: Array<string>) {
-      this.permissions = permissions;
-    },
-    /** 存储前端生成的验证码 */
-    SET_VERIFYCODE(verifyCode: string) {
-      this.verifyCode = verifyCode;
     },
     /** 存储登录页面显示哪个组件 */
     SET_CURRENTPAGE(value: number) {
