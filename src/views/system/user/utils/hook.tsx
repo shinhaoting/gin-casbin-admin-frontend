@@ -32,6 +32,7 @@ import {
   getUserRoleIds
 } from "@/api/user_manager";
 import { getAllRoles } from "@/api/role";
+import { assignUserRole } from "@/api/user";
 
 export function useUser(tableRef: Ref) {
   const form = reactive({
@@ -472,7 +473,22 @@ export function useUser(tableRef: Ref) {
       beforeSure: (done, { options }) => {
         const curData = options.props.formInline as RoleFormItemProps;
         console.log("curIds", curData.ids);
-        // 根据实际业务使用curData.ids和row里的某些字段去调用修改角色接口即可
+        assignUserRole(
+          row.id,
+          curData.ids.map(id => Number(id))
+        )
+          .then(res => {
+            if (res.code === 200) {
+              message(`分配角色成功`, {
+                type: "success"
+              });
+            }
+          })
+          .catch(() => {
+            message(`分配角色失败`, {
+              type: "error"
+            });
+          });
         done(); // 关闭弹框
       }
     });

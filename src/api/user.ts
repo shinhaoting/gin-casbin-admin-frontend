@@ -81,3 +81,14 @@ export const getMineLogs = (data?: object) => {
 export const getUserList = (data?: object) => {
   return http.request<HttpResponse<TableData>>("get", "/user", { data });
 };
+
+// 赋予用户角色
+export const assignUserRole = (userId: number, roleIds: number[]) => {
+  return http.request<HttpResponse<any>>(
+    "put",
+    `api/system/user/${userId}/roles`,
+    {
+      data: { roleIds }
+    }
+  );
+};
