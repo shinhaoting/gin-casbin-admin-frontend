@@ -3,7 +3,6 @@ import dayjs from "dayjs";
 import roleForm from "../form/role.vue";
 import editForm from "../form/index.vue";
 import { zxcvbn } from "@zxcvbn-ts/core";
-import { handleTree } from "@/utils/tree";
 import { message } from "@/utils/message";
 import userAvatar from "@/assets/user.jpg";
 import { usePublicHooks } from "../../hooks";
@@ -18,36 +17,29 @@ import {
   deviceDetection
 } from "@pureadmin/utils";
 import {
-  getRoleIds,
-  getDeptList,
-  getUserList,
-  getAllRoleList
-} from "@/api/system";
-import {
   ElForm,
   ElInput,
   ElFormItem,
   ElProgress,
   ElMessageBox
 } from "element-plus";
-import {
-  type Ref,
-  h,
-  ref,
-  toRaw,
-  watch,
-  computed,
-  reactive,
-  onMounted
-} from "vue";
+import { type Ref, h, ref, watch, computed, reactive, onMounted } from "vue";
 
-export function useUser(tableRef: Ref, treeRef: Ref) {
+import {
+  getUserList,
+  addUser,
+  updateUser,
+  getUserRoleIds
+} from "@/api/user_manager";
+import { getAllRoles } from "@/api/role";
+
+export function useUser(tableRef: Ref) {
   const form = reactive({
-    // 左侧部门树的id
-    deptId: "",
     username: "",
     phone: "",
-    status: ""
+    status: "",
+    pageNum: 1,
+    pageSize: 10
   });
   const formRef = ref();
   const ruleFormRef = ref();
@@ -57,9 +49,6 @@ export function useUser(tableRef: Ref, treeRef: Ref) {
   const avatarInfo = ref();
   const switchLoadMap = ref({});
   const { switchStyle } = usePublicHooks();
-  const higherDeptOptions = ref();
-  const treeData = ref([]);
-  const treeLoading = ref(true);
   const selectedNum = ref(0);
   const pagination = reactive<PaginationProps>({
     total: 0,
@@ -237,11 +226,14 @@ export function useUser(tableRef: Ref, treeRef: Ref) {
   }
 
   function handleSizeChange(val: number) {
-    console.log(`${val} items per page`);
+    pagination.pageSize = val;
+    pagination.currentPage = 1; // 切换每页条数时重置为第一页
+    onSearch();
   }
 
   function handleCurrentChange(val: number) {
-    console.log(`current page: ${val}`);
+    pagination.currentPage = val;
+    onSearch();
   }
 
   /** 当CheckBox选择项发生变化时会触发该事件 */
@@ -272,41 +264,33 @@ export function useUser(tableRef: Ref, treeRef: Ref) {
 
   async function onSearch() {
     loading.value = true;
-    const { data } = await getUserList(toRaw(form));
-    dataList.value = data.list;
-    pagination.total = data.total;
-    pagination.pageSize = data.pageSize;
-    pagination.currentPage = data.currentPage;
+    const params = {
+      username: form.username,
+      phone: form.phone,
+      status: form.status,
+      pageNum: pagination.currentPage, // 使用分页组件的当前页
+      pageSize: pagination.pageSize // 使用分页组件的每页条数
+    };
 
-    setTimeout(() => {
+    try {
+      const { data } = await getUserList(params);
+      dataList.value = data.list;
+      pagination.total = data.total;
+      pagination.currentPage = data.currentPage;
+    } catch (error) {
+      console.error("获取用户列表失败:", error);
+    } finally {
       loading.value = false;
-    }, 500);
+    }
   }
 
   const resetForm = formEl => {
     if (!formEl) return;
     formEl.resetFields();
-    form.deptId = "";
-    treeRef.value.onTreeReset();
+    pagination.currentPage = 1;
+    pagination.pageSize = 10;
     onSearch();
   };
-
-  function onTreeSelect({ id, selected }) {
-    form.deptId = selected ? id : "";
-    onSearch();
-  }
-
-  function formatHigherDeptOptions(treeList) {
-    // 根据返回数据的status字段值判断追加是否禁用disabled字段，返回处理后的树结构，用于上级部门级联选择器的展示（实际开发中也是如此，不可能前端需要的每个字段后端都会返回，这时需要前端自行根据后端返回的某些字段做逻辑处理）
-    if (!treeList || !treeList.length) return;
-    const newTreeList = [];
-    for (let i = 0; i < treeList.length; i++) {
-      treeList[i].disabled = treeList[i].status === 0 ? true : false;
-      formatHigherDeptOptions(treeList[i].children);
-      newTreeList.push(treeList[i]);
-    }
-    return newTreeList;
-  }
 
   function openDialog(title = "新增", row?: FormItemProps) {
     addDialog({
@@ -314,8 +298,7 @@ export function useUser(tableRef: Ref, treeRef: Ref) {
       props: {
         formInline: {
           title,
-          higherDeptOptions: formatHigherDeptOptions(higherDeptOptions.value),
-          parentId: row?.dept.id ?? 0,
+          parentId: row?.dept?.id ?? 0,
           nickname: row?.nickname ?? "",
           username: row?.username ?? "",
           password: row?.password ?? "",
@@ -347,11 +330,13 @@ export function useUser(tableRef: Ref, treeRef: Ref) {
             console.log("curData", curData);
             // 表单规则校验通过
             if (title === "新增") {
-              // 实际开发先调用新增接口，再进行下面操作
-              chores();
+              addUser(curData).then(() => {
+                chores();
+              });
             } else {
-              // 实际开发先调用修改接口，再进行下面操作
-              chores();
+              updateUser(curData).then(() => {
+                chores();
+              });
             }
           }
         });
@@ -466,7 +451,8 @@ export function useUser(tableRef: Ref, treeRef: Ref) {
   /** 分配角色 */
   async function handleRole(row) {
     // 选中的角色列表
-    const ids = (await getRoleIds({ userId: row.id })).data ?? [];
+    const ids = (await getUserRoleIds(row.id)).data.map(item => item?.id) ?? [];
+    roleOptions.value = (await getAllRoles()).data ?? [];
     addDialog({
       title: `分配 ${row.username} 用户的角色`,
       props: {
@@ -492,18 +478,8 @@ export function useUser(tableRef: Ref, treeRef: Ref) {
     });
   }
 
-  onMounted(async () => {
-    treeLoading.value = true;
+  onMounted(() => {
     onSearch();
-
-    // 归属部门
-    const { data } = await getDeptList();
-    higherDeptOptions.value = handleTree(data);
-    treeData.value = handleTree(data);
-    treeLoading.value = false;
-
-    // 角色列表
-    roleOptions.value = (await getAllRoleList()).data;
   });
 
   return {
@@ -511,8 +487,6 @@ export function useUser(tableRef: Ref, treeRef: Ref) {
     loading,
     columns,
     dataList,
-    treeData,
-    treeLoading,
     selectedNum,
     pagination,
     buttonClass,
@@ -521,7 +495,6 @@ export function useUser(tableRef: Ref, treeRef: Ref) {
     resetForm,
     onbatchDel,
     openDialog,
-    onTreeSelect,
     handleUpdate,
     handleDelete,
     handleUpload,
