@@ -3,7 +3,7 @@ import type { HttpResponse } from "@/utils/http/types.d";
 
 // 修改菜单
 export const updateMenu = (data: any) => {
-  return http.request<HttpResponse<any>>("post", "/api/system/menu", {
+  return http.request<HttpResponse<any>>("put", `/api/system/menu/${data.id}`, {
     data
   });
 };

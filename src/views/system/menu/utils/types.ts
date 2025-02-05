@@ -7,6 +7,7 @@ export enum MenuTypeEnum {
 }
 
 export interface FormItemProps {
+  id?: number;
   menuType: MenuTypeEnum;
   title: string;
   auths: string;

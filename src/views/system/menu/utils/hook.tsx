@@ -29,7 +29,6 @@ export function useMenu() {
   const loading = ref(true);
 
   const getMenuType = (type: MenuTypeEnum, text = false) => {
-    console.log("type", type);
     switch (type) {
       case MenuTypeEnum.MENU:
         return text ? "菜单" : "primary";
@@ -169,6 +168,7 @@ export function useMenu() {
       title: `${title}菜单`,
       props: {
         formInline: {
+          id: row?.id ?? 0,
           menuType: row?.menuType ?? MenuTypeEnum.MENU,
           higherMenuOptions: formatHigherMenuOptions(cloneDeep(dataList.value)),
           parentId: row?.parentId ?? 0,
