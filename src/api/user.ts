@@ -8,10 +8,6 @@ export type UserData = {
   username: string;
   /** 昵称 */
   nickname: string;
-  /** 当前登录用户的角色 */
-  roles: Array<string>;
-  /** 按钮级别权限 */
-  permissions: Array<string>;
   /** `token` */
   accessToken: string;
   /** 用于调用刷新`accessToken`的接口时所需的`token` */
@@ -79,4 +75,9 @@ export const getMine = (data?: object) => {
 /** 账户设置-个人安全日志 */
 export const getMineLogs = (data?: object) => {
   return http.request<HttpResponse<TableData>>("get", "/mine-logs", { data });
+};
+
+// 获取用户列表
+export const getUserList = (data?: object) => {
+  return http.request<HttpResponse<TableData>>("get", "/user", { data });
 };
