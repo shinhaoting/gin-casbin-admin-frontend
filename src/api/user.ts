@@ -62,14 +62,16 @@ export const getLogin = (data?: object) => {
 export const refreshTokenApi = (data?: object) => {
   return http.request<HttpResponse<RefreshTokenData>>(
     "post",
-    "/refresh-token",
+    "/api/auth/refresh-token",
     { data }
   );
 };
 
 /** 账户设置-个人信息 */
 export const getMine = (data?: object) => {
-  return http.request<HttpResponse<UserInfo>>("get", "/mine", { data });
+  return http.request<HttpResponse<UserInfo>>("get", "/api/user/profile", {
+    data
+  });
 };
 
 /** 账户设置-个人安全日志 */
