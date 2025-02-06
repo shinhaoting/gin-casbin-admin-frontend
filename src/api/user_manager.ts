@@ -24,7 +24,7 @@ export const addUser = (data: any) => {
 
 // 修改用户
 export const updateUser = (data: any) => {
-  return http.request<HttpResponse<any>>("put", "/api/system/user", {
+  return http.request<HttpResponse<any>>("put", `/api/system/user/${data.id}`, {
     data
   });
 };
@@ -42,5 +42,16 @@ export const getUserRoleIds = (userId: number) => {
   return http.request<HttpResponse<any>>(
     "get",
     `/api/system/user/${userId}/roles`
+  );
+};
+
+// 更新用户密码
+export const updateUserPassword = (userId: number, password: string) => {
+  return http.request<HttpResponse<any>>(
+    "put",
+    `/api/system/user/${userId}/password`,
+    {
+      data: { password }
+    }
   );
 };
