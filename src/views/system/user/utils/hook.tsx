@@ -29,7 +29,8 @@ import {
   getUserList,
   addUser,
   updateUser,
-  getUserRoleIds
+  getUserRoleIds,
+  updateUserPassword
 } from "@/api/user_manager";
 import { getAllRoles } from "@/api/role";
 import { assignUserRole } from "@/api/user";
@@ -298,6 +299,7 @@ export function useUser(tableRef: Ref) {
       title: `${title}用户`,
       props: {
         formInline: {
+          id: row?.id ?? 0,
           title,
           parentId: row?.dept?.id ?? 0,
           nickname: row?.nickname ?? "",
@@ -331,12 +333,22 @@ export function useUser(tableRef: Ref) {
             console.log("curData", curData);
             // 表单规则校验通过
             if (title === "新增") {
-              addUser(curData).then(() => {
+              addUser(curData).then(res => {
+                if (res.code === 200) {
+                  message(`新增成功`, {
+                    type: "success"
+                  });
+                }
                 chores();
               });
             } else {
-              updateUser(curData).then(() => {
-                chores();
+              updateUser(curData).then(res => {
+                if (res.code === 200) {
+                  message(`修改成功`, {
+                    type: "success"
+                  });
+                  chores();
+                }
               });
             }
           }
@@ -436,13 +448,15 @@ export function useUser(tableRef: Ref) {
         ruleFormRef.value.validate(valid => {
           if (valid) {
             // 表单规则校验通过
-            message(`已成功重置 ${row.username} 用户的密码`, {
-              type: "success"
+            updateUserPassword(row.id, pwdForm.newPwd).then(res => {
+              if (res.code === 200) {
+                message(`已成功重置 ${row.username} 用户的密码`, {
+                  type: "success"
+                });
+                done(); // 关闭弹框
+                onSearch(); // 刷新表格数据
+              }
             });
-            console.log(pwdForm.newPwd);
-            // 根据实际业务使用pwdForm.newPwd和row里的某些字段去调用重置用户密码接口即可
-            done(); // 关闭弹框
-            onSearch(); // 刷新表格数据
           }
         });
       }
