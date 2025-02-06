@@ -134,12 +134,54 @@ class PureHttp {
         }
         return response.data;
       },
-      (error: PureHttpError) => {
+      async (error: PureHttpError) => {
         const $error = error;
         $error.isCancelRequest = Axios.isCancel($error);
-        // 关闭进度条动画
         NProgress.done();
-        // 所有的响应异常 区分来源为取消请求/非取消请求
+
+        // 处理token过期的情况 (假设后端返回401状态码表示token过期)
+        if (error.response?.status === 401) {
+          const data = getToken();
+
+          // 如果没有refresh token，直接跳转登录页
+          if (!data?.refreshToken) {
+            useUserStoreHook().logOut();
+            return Promise.reject(error);
+          }
+
+          // 防止多个请求同时刷新token
+          if (!PureHttp.isRefreshing) {
+            PureHttp.isRefreshing = true;
+            try {
+              const res = await useUserStoreHook().handRefreshToken({
+                refreshToken: data.refreshToken
+              });
+
+              if (res.code === 200) {
+                // 刷新token成功，重试所有等待的请求
+                const token = res.data.accessToken;
+                PureHttp.requests.forEach(cb => cb(token));
+                PureHttp.requests = [];
+                // 重试当前请求
+                error.config.headers["Authorization"] = formatToken(token);
+                return PureHttp.axiosInstance.request(error.config);
+              } else {
+                // refresh token也过期或无效，跳转登录页
+                useUserStoreHook().logOut();
+              }
+            } catch (refreshError) {
+              console.error("refresh token请求失败", refreshError);
+              // refresh token请求失败，跳转登录页
+              useUserStoreHook().logOut();
+            } finally {
+              PureHttp.isRefreshing = false;
+            }
+          } else {
+            // 其他请求等待token刷新完成
+            return PureHttp.retryOriginalRequest(error.config);
+          }
+        }
+
         return Promise.reject($error);
       }
     );
