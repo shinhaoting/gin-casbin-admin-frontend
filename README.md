@@ -17,9 +17,9 @@
 
 ```bash
 # 克隆项目
-git clone https://github.com/wxlbd/pure-admin-plus.git
+git clone https://github.com/wxlbd/gin-casbin-admin-frontend.git
 # 进入项目目录
-cd pure-admin-plus
+cd gin-casbin-admin-frontend
 # 安装依赖
 pnpm install
 # 启动服务
