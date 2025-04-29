@@ -75,11 +75,29 @@ export default ({
       // 本地跨域代理 https://cn.vitejs.dev/config/server-options.html#server-proxy
       proxy: {
         "/api": {
-          target: VITE_API_BASE_URL,
+          target: "http://127.0.0.1:8080",
           changeOrigin: true,
-          rewrite: path => path.replace("", ""),
-          configure: () => {},
-          secure: false
+          rewrite: path => path,
+          secure: false,
+          configure: (proxy, _options) => {
+            proxy.on("error", (err, _req, _res) => {
+              console.log("proxy error", err);
+            });
+            proxy.on("proxyReq", (proxyReq, req, _res) => {
+              console.log(
+                "Sending Request to the Target:",
+                req.method,
+                req.url
+              );
+            });
+            proxy.on("proxyRes", (proxyRes, req, _res) => {
+              console.log(
+                "Received Response from the Target:",
+                proxyRes.statusCode,
+                req.url
+              );
+            });
+          }
         }
       },
       // 预热文件以提前转换和缓存结果，降低启动期间的初始页面加载时长并防止转换瀑布
